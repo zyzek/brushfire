@@ -10,7 +10,7 @@ var start_fuel = 1000;
 var start_oxygen = 5000;
 
 var ambient_temperature = 30.0;
-var ambient_loss = 6.0;
+var ambient_loss = 10.0;
 var heat_transfer_rate = 1.0;
 
 var fuel_potential_heat = 600000.0;
@@ -157,7 +157,7 @@ class Tile {
                 env_loss *= scale;
             }
 
-            for (const flow of outflows) {
+            for (let flow of outflows) {
                 flow.heat_flow *= scale;
             }
         }
@@ -174,7 +174,7 @@ class Tile {
 
         if (this.oxygen + in_total < out_total) {
             const scale = (in_total + this.oxygen) / out_total;
-            for (const flow of outflows) {
+            for (let flow of outflows) {
                 flow.heat_flow *= scale;
             }
         }
@@ -225,6 +225,8 @@ class Grid {
         this.height = height;
         this.canvas = canvas;
         this.context = context;
+
+        this.rect = this.canvas.getBoundingClientRect();
 
         this.mouseX = 0;
         this.mouseY = 0;
@@ -312,8 +314,11 @@ class Grid {
     }
 
     mouse_click_handler(evnt) {
-        this.mouseX = evnt.clientX;
-        this.mouseY = evnt.clientY;
+        this.mouseX = evnt.clientX - this.rect.left;
+        this.mouseY = evnt.clientY - this.rect.top;
+
+        console.log(this.mouseX);
+        console.log(this.mouseY);
         
         let p = this.screen_to_world(this.mouseX, this.mouseY);
         let t = this.tiles[p.y][p.x];
@@ -355,11 +360,11 @@ class Grid {
                 let blue = parseInt(100 * t.oxygen / start_oxygen);
                 let color = "rgb(" + red + ", " + green + ", " + blue + ")";
                 this.context.fillStyle = color;
-                this.context.fillRect(x*square_size, y*square_size, square_size, square_size);
+                this.context.fillRect(x*square_size + this.rect.left, y*square_size + this.rect.top, square_size, square_size);
                 let alpha = t.burning ? (1 + Math.cos(t.temperature()))/3 : 0.0;
                 color = "rgba(255, 150, 0, " + alpha + ")";
                 this.context.fillStyle = color;
-                this.context.fillRect(x*square_size, y*square_size, square_size, square_size);
+                this.context.fillRect(x*square_size + this.rect.left, y*square_size + this.rect.top, square_size, square_size);
             }
         }
 
