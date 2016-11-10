@@ -151,7 +151,7 @@ class Tile {
         }
 
         if (this.heat + in_total < out_total) {
-            const scale = (out_total - this.heat) / in_total;
+            const scale = (in_total + this.heat) / out_total;
 
             if (env_loss < 0) {
                 env_loss *= scale;
@@ -173,10 +173,7 @@ class Tile {
         const in_total = inflows.map(p => Math.abs(p.oxygen_flow)).reduce((x, y) => x + y, 0)
 
         if (this.oxygen + in_total < out_total) {
-            const scale = this.oxygen / out_total;
-            if (in_total > 0) {
-                const scale = (out_total - this.oxygen) / in_total;
-            }
+            const scale = (in_total + this.oxygen) / out_total;
             for (const flow of outflows) {
                 flow.heat_flow *= scale;
             }
@@ -279,6 +276,7 @@ class Grid {
         canvas.addEventListener('click', this.mouse_click_handler);
 
         this.running = false;
+        this.drawing = true;
     }
    
 
@@ -371,14 +369,20 @@ class Grid {
     main() {
         if (this.running) {
             this.update();
-            this.draw();
-            requestAnimationFrame(() => this.main());
         }
+        if (this.drawing) {
+            this.draw();
+        }
+        requestAnimationFrame(() => this.main());
     }
 
     start() {
         this.running = true;
         requestAnimationFrame(() => this.main());
+    }
+
+    stop() {
+        this.running = false;
     }
 
 
@@ -398,3 +402,4 @@ for (let y = -o; y <= o; ++y) {
     }
 }
 
+grid.main();
