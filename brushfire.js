@@ -5,6 +5,8 @@
 // Make flame colour reflect temperature.
 // 
 // Improve oxygen flows, e.g. wind, momentum, mass
+//
+// Compression heating.
 
 var start_fuel = 1000;
 var start_oxygen = 5000;
@@ -48,6 +50,22 @@ class Flow {
 
     is_heat_source(t) {
         return (t === this.a && this.heat_flow > 0) || (t === this.b && this.heat_flow < 0);
+    }
+
+    relative_oxygen_flow(t) {
+        if (t == this.a) {
+            return -this.oxygen_flow;
+        }
+
+        return this.oxygen_flow;
+    }
+
+    relative_heat_flow(t) {
+        if (t == this.a) {
+            return -this.heat_flow;
+        }
+
+        return this.heat_flow;
     }
 
 
@@ -139,10 +157,9 @@ class Tile {
     
  
     adjust_heat_flows() {
-        const outflows = this.flows.filter(p => p.is_heat_source(this));
-        const inflows = this.flows.filter(p => !p.is_heat_source(this));
-        let out_total = outflows.map(p => Math.abs(p.heat_flow)).reduce((x, y) => x + y, 0)
-        let in_total = inflows.map(p => Math.abs(p.heat_flow)).reduce((x, y) => x + y, 0)
+        const rel_flows = this.flows.map(f => f.relative_heat_flow(this));
+        let out_total = -rel_flows.filter(f => f < 0).reduce((x, y) => x + y, 0);
+        let in_total = rel_flows.filter(f => f > 0).reduce((x, y) => x + y, 0);
 
         let env_loss = ambient_loss * heat_transfer_rate * (ambient_temperature - this.temperature());
         if (env_loss > 0) {
@@ -158,7 +175,7 @@ class Tile {
                 env_loss *= scale;
             }
 
-            for (let flow of outflows) {
+            for (let flow of this.flows.filter(p => p.is_heat_source(this))) {
                 flow.heat_flow *= scale;
             }
         }
@@ -168,17 +185,19 @@ class Tile {
 
 
     adjust_oxygen_flows() {
-        const outflows = this.flows.filter(p => p.is_oxygen_source(this));
-        const inflows = this.flows.filter(p => !p.is_oxygen_source(this));
-        const out_total = outflows.map(p => Math.abs(p.oxygen_flow)).reduce((x, y) => x + y, 0)
-        const in_total = inflows.map(p => Math.abs(p.oxygen_flow)).reduce((x, y) => x + y, 0)
+        const rel_flows = this.flows.map(f => f.relative_oxygen_flow(this));
+        const out_total = -rel_flows.filter(f => f < 0).reduce((x, y) => x + y, 0);
+        const in_total = rel_flows.filter(f => f > 0).reduce((x, y) => x + y, 0);
 
         if (this.oxygen + in_total < out_total) {
             const scale = (in_total + this.oxygen) / out_total;
-            for (let flow of outflows) {
+            for (let flow of this.flows.filter(p => p.is_oxygen_source(this))) {
                 flow.heat_flow *= scale;
             }
         }
+
+        
+
     }
 
     adjust_flows() {
@@ -403,8 +422,8 @@ class Grid {
 var canvas = document.getElementById("canvas");
 var context = canvas.getContext("2d");
 
-var grid_x = 20;
-var grid_y = 20;
+var grid_x = 40;
+var grid_y = 40;
 
 var grid = new Grid(grid_x, grid_y, canvas, context);
 
