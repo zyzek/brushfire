@@ -419,8 +419,8 @@ class Grid {
     }
     
     screen_to_world(x, y) {
-       return {x: parseInt(this.width * x / this.canvas.width) ,
-               y: parseInt(this.height * y / this.canvas.height)};
+       return {x: parseInt(this.width * (x + this.rect.left) / this.canvas.width) ,
+               y: parseInt(this.height * (y + this.rect.top) / this.canvas.height)};
     }
 
     mouse_click_handler(evnt) {
@@ -465,11 +465,11 @@ class Grid {
                 let blue = parseInt(100 * t.oxygen / start_oxygen);
                 let color = "rgb(" + red + ", " + green + ", " + blue + ")";
                 this.context.fillStyle = color;
-                this.context.fillRect(x*this.tile_size + this.rect.left, y*this.tile_size + this.rect.top, this.tile_size, this.tile_size);
+                this.context.fillRect(x*this.tile_size, y*this.tile_size, this.tile_size, this.tile_size);
                 let alpha = t.burning ? (1 + Math.cos(t.temperature()))/3 : 0.0;
                 color = "rgba(255, 150, 0, " + alpha + ")";
                 this.context.fillStyle = color;
-                this.context.fillRect(x*this.tile_size + this.rect.left, y*this.tile_size + this.rect.top, this.tile_size, this.tile_size);
+                this.context.fillRect(x*this.tile_size, y*this.tile_size, this.tile_size, this.tile_size);
             }
         }
     }
@@ -478,8 +478,8 @@ class Grid {
         for (let y = 0; y < this.height; ++y) {
             for (let x = 0; x < this.width; ++x) {
                 let t = this.tiles[y][x];
-                let x_pos = x*this.tile_size + this.rect.left + this.tile_size / 2;
-                let y_pos = y*this.tile_size + this.rect.top + this.tile_size / 2;
+                let x_pos = x*this.tile_size + this.tile_size / 2;
+                let y_pos = y*this.tile_size + this.tile_size / 2;
                 let x_len = Math.max(-20, Math.min(t.momentum_x, 20));
                 let y_len = Math.max(-20, Math.min(t.momentum_y, 20));
                 
