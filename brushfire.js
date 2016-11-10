@@ -105,6 +105,7 @@ class Tile {
 
         this.burning = false;
         this.flows = [];
+        this.flowdirs = {}
     }
 
     
@@ -260,7 +261,9 @@ class Grid {
             for (let x = 0; x < width - 1; ++x) {
                 let flow = new Flow(this.tiles[y][x], this.tiles[y][x+1]);
                 this.tiles[y][x].flows.push(flow);
+                this.tiles[y][x].flowdirs.right = flow;
                 this.tiles[y][x+1].flows.push(flow);
+                this.tiles[y][x+1].flowdirs.left = flow;
                 this.flows.push(flow);
             }
         }
@@ -269,7 +272,9 @@ class Grid {
             for (let x = 0; x < width; ++x) {
                 let flow = new Flow(this.tiles[y][x], this.tiles[y+1][x]);
                 this.tiles[y][x].flows.push(flow);
+                this.tiles[y][x].flowdirs.down = flow;
                 this.tiles[y+1][x].flows.push(flow);
+                this.tiles[y+1][x].flowdirs.up = flow;
                 this.flows.push(flow);
             }
         }
@@ -397,7 +402,11 @@ class Grid {
 
 var canvas = document.getElementById("canvas");
 var context = canvas.getContext("2d");
-var grid = new Grid(40, 40, canvas, context);
+
+var grid_x = 20;
+var grid_y = 20;
+
+var grid = new Grid(grid_x, grid_y, canvas, context);
 
 let o = 2;
 
