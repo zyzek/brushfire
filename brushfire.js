@@ -2,11 +2,12 @@
 //
 // Burn faster when the temperature is higher, when there's more oxygen.
 //
-// Higher heat = higher pressure (so affects flows)
-// Make flame colour reflect black body radiation.
+// Make flame colour reflect temperature.
+// 
+// Improve oxygen flows, e.g. wind, momentum, mass
 
 var start_fuel = 1000;
-var start_oxygen = 10000;
+var start_oxygen = 5000;
 
 var ambient_temperature = 30.0;
 var ambient_loss = 6.0;
@@ -21,11 +22,13 @@ var fuel_heat_capacity = 1.0;
 
 var oxygen_mass = 10.0;
 var oxygen_heat_capacity = 0.4;
-var oxygen_diffusion_rate = 10.0;
+var oxygen_diffusion_rate = 5.0;
 
-const inert_heat_capacity = 1.0;
+var pressure_coefficient = 0.05;
 
-const burn_oxygen_fuel_ratio = 20.0;
+var inert_heat_capacity = 1.0;
+
+var burn_oxygen_fuel_ratio = 10.0;
 
 class Flow {
     constructor(a, b) {
@@ -49,9 +52,9 @@ class Flow {
 
 
     calculate() {
-        const pressure_delta = Math.abs(this.a.oxygen - this.b.oxygen);
-        const pressure_dir = Math.sign(this.a.oxygen - this.b.oxygen);
-        this.oxygen_flow = oxygen_diffusion_rate * pressure_dir * Math.sqrt(pressure_delta);
+        const avg_temp = (this.a.temperature() + this.b.temperature()) / 2;
+        const pressure_delta = (this.a.pressure() - this.b.pressure())/avg_temp;
+        this.oxygen_flow = oxygen_diffusion_rate * Math.sign(pressure_delta) * Math.sqrt(Math.abs(pressure_delta));
         this.heat_flow = heat_transfer_rate * (this.a.temperature() - this.b.temperature());
     }
 
@@ -211,6 +214,10 @@ class Tile {
 
     set_temperature(t) {
         this.heat = t * this.heat_capacity();
+    }
+
+    pressure() {
+        return (pressure_coefficient * (this.temperature() - 1) + 1) * this.oxygen_mass();
     }
 
 }
