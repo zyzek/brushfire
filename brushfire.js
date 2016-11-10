@@ -3,6 +3,7 @@
 // Burn faster when the temperature is higher, when there's more oxygen.
 //
 // Higher heat = higher pressure (so affects flows)
+// Make flame colour reflect black body radiation.
 
 var start_fuel = 1000;
 var start_oxygen = 10000;
@@ -350,6 +351,10 @@ class Grid {
                 let color = "rgb(" + red + ", " + green + ", " + blue + ")";
                 this.context.fillStyle = color;
                 this.context.fillRect(x*square_size, y*square_size, square_size, square_size);
+                let alpha = t.burning ? (1 + Math.cos(t.temperature()))/3 : 0.0;
+                color = "rgba(255, 150, 0, " + alpha + ")";
+                this.context.fillStyle = color;
+                this.context.fillRect(x*square_size, y*square_size, square_size, square_size);
             }
         }
 
@@ -376,7 +381,7 @@ class Grid {
 
 var canvas = document.getElementById("canvas");
 var context = canvas.getContext("2d");
-var grid = new Grid(20, 20, canvas, context);
+var grid = new Grid(40, 40, canvas, context);
 
 let o = 2;
 
@@ -385,12 +390,4 @@ for (let y = -o; y <= o; ++y) {
         grid.tiles[10 + y][10 + x].set_temperature(600);
     }
 }
-
-/*
-for (let y = -o; y <= o; ++y) {
-    for (let x = -o; x <= o; ++x) {
-        grid.tiles[70 + y][30 + x].set_temperature(600);
-    }
-}*/
-
 
