@@ -228,31 +228,43 @@ class Tile {
             y_momentum -= this.flowdirs[DOWN_IDX].relative_oxygen_flow(this);
         }
         
-        /*if (x_momentum > 0) {
+        if (x_momentum > 0) {
             if (this.flowdirs[RIGHT_IDX]) {
-                x_momentum *= this.oxygen * wind_coefficient / (Math.abs(x_momentum) + this.oxygen);
-                //this.flowdirs[RIGHT_IDX].add_oxygen_flow_from(x_momentum, this);
+                x_momentum *= x_momentum * wind_coefficient / (x_momentum + this.oxygen);
+                this.flowdirs[RIGHT_IDX].add_oxygen_flow_from(x_momentum, this);
+            }
+            else {
+                x_momentum = 0;
             }
         }
         else {
             if (this.flowdirs[LEFT_IDX]) {
-                x_momentum *= this.oxygen * wind_coefficient / (Math.abs(x_momentum) + this.oxygen);
-                //this.flowdirs[LEFT_IDX].add_oxygen_flow_from(x_momentum, this);
+                x_momentum *= x_momentum * wind_coefficient / (x_momentum - this.oxygen);
+                this.flowdirs[LEFT_IDX].add_oxygen_flow_from(-x_momentum, this);
+            }
+            else {
+                x_momentum = 0;
             }
         }
 
         if (y_momentum > 0) {
             if (this.flowdirs[DOWN_IDX]) {
-                y_momentum *= this.oxygen * wind_coefficient / (Math.abs(y_momentum) + this.oxygen);
-                //this.flowdirs[DOWN_IDX].add_oxygen_flow_from(y_momentum, this);
+                y_momentum *= y_momentum * wind_coefficient / (y_momentum + this.oxygen);
+                this.flowdirs[DOWN_IDX].add_oxygen_flow_from(y_momentum, this);
+            }
+            else {
+                y_momentum = 0;
             }
         }
         else {
             if (this.flowdirs[UP_IDX]) {
-                y_momentum *= this.oxygen * wind_coefficient / (Math.abs(y_momentum) + this.oxygen);
-                //this.flowdirs[UP_IDX].add_oxygen_flow_from(y_momentum, this);
+                y_momentum *= y_momentum * wind_coefficient / (y_momentum - this.oxygen);
+                this.flowdirs[UP_IDX].add_oxygen_flow_from(-y_momentum, this);
             }
-        }*/
+            else {
+                y_momentum = 0;
+            }
+        }
 
         this.momentum_x = x_momentum;
         this.momentum_y = y_momentum;
@@ -319,6 +331,10 @@ class Grid {
         this.tile_size = parseInt(Math.min(this.canvas.height/this.height, this.canvas.width/this.width));
 
         this.rect = this.canvas.getBoundingClientRect();
+        
+        this.running = false;
+        this.drawing = true;
+        this.windicators = true;
 
         this.mouseX = 0;
         this.mouseY = 0;
@@ -373,8 +389,6 @@ class Grid {
         this.mouse_click_handler = this.mouse_click_handler.bind(this);
         canvas.addEventListener('click', this.mouse_click_handler);
 
-        this.running = false;
-        this.drawing = true;
     }
    
 
@@ -485,7 +499,10 @@ class Grid {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.draw_tiles();
-        this.draw_windicators();
+
+        if (this.windicators) {
+            this.draw_windicators();
+        }
 
         this.draw_cursor();
     }
@@ -508,9 +525,6 @@ class Grid {
     stop() {
         this.running = false;
     }
-
-
-
 }
 
 
@@ -524,7 +538,7 @@ var grid = new Grid(grid_x, grid_y, canvas, context);
 
 let px = 20;
 let py = 20;
-let o = 2;
+let o = 1;
 
 for (let y = -o; y <= o; ++y) {
     for (let x = -o; x <= o; ++x) {
