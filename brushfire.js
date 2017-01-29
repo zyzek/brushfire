@@ -4,9 +4,9 @@
 //
 // Make flame colour reflect temperature.
 // 
-// Improve oxygen flows, e.g. wind, momentum, mass
-//
 // Compression heating.
+//
+// Fix div by zero nukes.
 
 var start_fuel = 1000;
 var start_oxygen = 5000;
@@ -27,7 +27,7 @@ var oxygen_heat_capacity = 0.4;
 var oxygen_diffusion_rate = 5.0;
 
 var pressure_coefficient = 0.05;
-var wind_coefficient = 1.0;
+var wind_coefficient = 0.99;
 
 var inert_heat_capacity = 1.0;
 
@@ -37,6 +37,49 @@ const UP_IDX = 0;
 const DOWN_IDX = 1;
 const LEFT_IDX = 2;
 const RIGHT_IDX = 3;
+
+var wind_max_len = 20;
+
+
+class Spark {
+    constructor(tile) {
+        this.tile = tile;
+    }
+
+    update() {
+        if (this.tile.oxygen > 0) {
+            const move_mass = this.tile.momentum_x + this.tile.momentum_y;
+            const move_prob = move_mass / this.tile.oxygen;
+            const rand = Math.random();
+            //console.log(rand);
+            //console.log(move_prob);
+            if (rand < 0.025) {
+                //this.tile = this.tile.flowdirs[RIGHT_IDX].get_other_tile(this.tile);
+                if (rand < this.tile.momentum_x / move_mass) {
+                    // Move in x direction
+                    if (this.tile.momentum_x > 0) {
+                        this.tile = this.tile.flowdirs[RIGHT_IDX].get_other_tile(this.tile);
+                    }
+                    else {
+                        this.tile = this.tile.flowdirs[LEFT_IDX].get_other_tile(this.tile);
+                    }
+                }
+                else {
+                    // Move in y direction
+                    if (this.tile.momentum_y > 0) {
+                        this.tile = this.tile.flowdirs[DOWN_IDX].get_other_tile(this.tile);
+                    }
+                    else {
+                        this.tile = this.tile.flowdirs[UP_IDX].get_other_tile(this.tile);
+                    }
+                }
+
+            }
+        }
+    }
+}
+
+
 
 class Flow {
     constructor(a, b) {
@@ -92,6 +135,13 @@ class Flow {
         }
     }
 
+    get_other_tile(t) {
+        if (t == this.a) {
+            return this.b;
+        }
+        return this.a;
+    }
+
 
     calculate() {
         const avg_temp = (this.a.temperature() + this.b.temperature()) / 2;
@@ -139,7 +189,9 @@ class Flow {
 
 
 class Tile {
-    constructor(temperature, fuel, oxygen, inert_mass) {
+    constructor(x, y, temperature, fuel, oxygen, inert_mass) {
+        this.x = x;
+        this.y = y;
         this.fuel = fuel;
         this.oxygen = oxygen;
         this.inert_mass = inert_mass;
@@ -238,9 +290,9 @@ class Tile {
             }
         }
         else {
-            if (this.flowdirs[LEFT_IDX]) {
-                x_momentum *= x_momentum * wind_coefficient / (x_momentum - this.oxygen);
-                this.flowdirs[LEFT_IDX].add_oxygen_flow_from(-x_momentum, this);
+            if (this.flowdirs[LEFT_IDX] && (x_momentum - this.oxygen != 0)) {
+                x_momentum *= x_momentum * wind_coefficient / (this.oxygen - x_momentum);
+                this.flowdirs[LEFT_IDX].add_oxygen_flow_from(x_momentum, this);
             }
             else {
                 x_momentum = 0;
@@ -257,9 +309,9 @@ class Tile {
             }
         }
         else {
-            if (this.flowdirs[UP_IDX]) {
-                y_momentum *= y_momentum * wind_coefficient / (y_momentum - this.oxygen);
-                this.flowdirs[UP_IDX].add_oxygen_flow_from(-y_momentum, this);
+            if (this.flowdirs[UP_IDX] && (y_momentum - this.oxygen != 0)) {
+                y_momentum *= y_momentum * wind_coefficient / (this.oxygen - y_momentum);
+                this.flowdirs[UP_IDX].add_oxygen_flow_from(y_momentum, this);
             }
             else {
                 y_momentum = 0;
@@ -341,6 +393,8 @@ class Grid {
 
         this.tiles = new Array(height);
         this.flows = [];
+        this.sparks = [];
+
         for (let y = 0; y < height; ++y) {
             this.tiles[y] = new Array(width);
             for (let x = 0; x < width; x++) {
@@ -360,7 +414,7 @@ class Grid {
                     fuel = this.tiles[y][x-1].fuel;
                 }
 
-                this.tiles[y][x] = new Tile(ambient_temperature, fuel, start_oxygen, 0);
+                this.tiles[y][x] = new Tile(x, y, ambient_temperature, fuel, start_oxygen, 0);
             }
         }
 
@@ -415,6 +469,11 @@ class Grid {
         // Send the flows themselves.
         for (let flow of this.flows) {
             flow.send();
+        }
+        
+        // Waft sparks around.
+        for (let spark of this.sparks) {
+            spark.update();
         }
     }
     
@@ -480,11 +539,20 @@ class Grid {
                 let t = this.tiles[y][x];
                 let x_pos = x*this.tile_size + this.tile_size / 2;
                 let y_pos = y*this.tile_size + this.tile_size / 2;
-                let x_len = Math.max(-20, Math.min(t.momentum_x, 20));
-                let y_len = Math.max(-20, Math.min(t.momentum_y, 20));
+                let x_len = 2*t.momentum_x;
+                let y_len = 2*t.momentum_y;
+
+                let magnitude = Math.sqrt(x_len*x_len + y_len*y_len);
+
+                if (magnitude > wind_max_len) {
+                    let scale = wind_max_len / magnitude;
+                    x_len *= scale;
+                    y_len *= scale;
+                }
                 
                 this.context.save();
                 this.context.strokeStyle = "white";
+                this.context.lineWidth = 0.5;
                 this.context.beginPath();
                 this.context.moveTo(x_pos, y_pos);
                 this.context.lineTo(x_pos + x_len, y_pos + y_len);
@@ -495,10 +563,30 @@ class Grid {
         }
     }
 
+    draw_sparks() {
+        this.context.save();
+        this.context.strokeStyle = "black";
+        this.context.fillStyle = "orange";
+
+        for (let spark of this.sparks) {
+            let x = spark.tile.x * this.tile_size + this.tile_size / 2;
+            let y = spark.tile.y * this.tile_size + this.tile_size / 2;
+
+            this.context.beginPath();
+            this.context.arc(x, y, 2, 0, 2*Math.PI, true);
+            this.context.fill();
+            this.context.stroke();
+            this.context.closePath();
+        }
+        this.context.restore();
+    }
+
     draw() {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.draw_tiles();
+
+        this.draw_sparks();
 
         if (this.windicators) {
             this.draw_windicators();
@@ -536,8 +624,8 @@ var grid_y = 40;
 
 var grid = new Grid(grid_x, grid_y, canvas, context);
 
-let px = 20;
-let py = 20;
+let px = 10;
+let py = 10;
 let o = 1;
 
 for (let y = -o; y <= o; ++y) {
@@ -545,5 +633,13 @@ for (let y = -o; y <= o; ++y) {
         grid.tiles[py + y][px + x].set_temperature(600);
     }
 }
+
+/*
+grid.sparks.push(new Spark(grid.tiles[10][5]));
+grid.sparks.push(new Spark(grid.tiles[5][10]));
+grid.sparks.push(new Spark(grid.tiles[10][15]));
+grid.sparks.push(new Spark(grid.tiles[5][5]));
+grid.sparks.push(new Spark(grid.tiles[20][5]));
+*/
 
 grid.main();
